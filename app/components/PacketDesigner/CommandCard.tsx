@@ -28,15 +28,17 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
             <div className="mr-4 text-lg font-semibold text-blue-800 w-20 text-center">
               {formatCode(command.code)}
             </div>
-            <div className="flex-1">
+            <button className="flex-1 cursor-pointer"
+                    onClick={() => setExpanded(!expanded)}
+            >
               <div className="flex items-center">
                 <h3 className="text-lg font-medium text-gray-900">{command.name}</h3>
                 <span className="ml-3 text-sm text-gray-500 px-2 py-0.5 bg-gray-100 rounded-full">
                   {command.categoryName}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-600 truncate">{command.description}</p>
-            </div>
+              <p className="mt-1 text-sm text-gray-600 truncate text-start">{command.description}</p>
+            </button>
           </div>
 
           {/* 오른쪽: 액션 버튼 */}
@@ -121,7 +123,8 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                     {command.response?.fields.map((field, fieldIdx) => (
-                      <tr key={fieldIdx} className="hover:bg-gray-50">
+                      <tr key={fieldIdx}
+                          className="hover:bg-gray-50">
                         <td className="px-2 py-1 whitespace-nowrap">{field.byteIndex}</td>
                         <td className="px-2 py-1 whitespace-nowrap font-medium">{field.name}</td>
                         <td className="px-2 py-1">
