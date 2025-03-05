@@ -6,7 +6,7 @@ import {ProtocolProvider} from '@/context/ProtocolContext';
 const inter = Inter({subsets: ['latin']});
 
 export const metadata: Metadata = {
-  title: '패킷 프로토콜 디자이너',
+  title: '룸핏 프로토콜 매니저',
   description: '패킷 기반 통신 프로토콜 정의 및 문서화 도구',
 };
 
