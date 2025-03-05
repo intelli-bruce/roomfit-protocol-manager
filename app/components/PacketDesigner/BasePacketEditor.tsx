@@ -3,7 +3,6 @@
 import React, {useState} from 'react';
 import {useProtocol} from '@/context/ProtocolContext';
 import {PacketField} from '@/lib/types';
-import {generateId} from '@/lib/initialState';
 
 const BasePacketEditor = () => {
   const {state, dispatch} = useProtocol();
