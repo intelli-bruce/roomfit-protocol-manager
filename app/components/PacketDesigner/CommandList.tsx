@@ -210,7 +210,7 @@ const CommandList: React.FC<{ selectedCategory: string }> = ({selectedCategory})
           <p className="mt-1 text-gray-500">검색 조건에 맞는 명령어가 없거나 아직 명령어가 추가되지 않았습니다.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="divide-y divide-gray-200 border border-gray-200 rounded-lg bg-white">
           {filteredCommands.map((command) => (
             <CommandCard
               key={command.id}
