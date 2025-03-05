@@ -2,6 +2,25 @@
 
 .
 ├── app
+│   ├── components
+│   │   ├── PacketDesigner
+│   │   │   ├── CommandCard.tsx
+│   │   │   ├── CommandEditor.tsx
+│   │   │   ├── CommandList.tsx
+│   │   │   └── PacketDesginer.tsx
+│   │   └── UI
+│   │       ├── Header.tsx
+│   │       ├── Modal.tsx
+│   │       ├── Sidebar.tsx
+│   │       └── TabNavigation.tsx
+│   ├── context
+│   │   ├── ProtocolContext.tsx
+│   │   └── reducer.ts
+│   ├── lib
+│   │   ├── initialState.ts
+│   │   └── types.ts
+│   ├── utils
+│   │   └── packetUtils.ts
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx
@@ -19,4 +38,4 @@
 ├── postcss.config.mjs
 └── tsconfig.json
 
-6 directories, 12 files
+12 directories, 25 files
