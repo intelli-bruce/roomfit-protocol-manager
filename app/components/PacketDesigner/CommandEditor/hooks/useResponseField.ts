@@ -26,7 +26,24 @@ export const useResponseFields = (
   const [calculatedSize, setCalculatedSize] = useState('0x02');
   const [calculatedChecksum, setCalculatedChecksum] = useState('0x00');
 
-  // 초기 고정 필드 ID 설정
+  // 초기 고정 필드 생성 함수
+  const createInitialFields = (): PacketField[] => {
+    return [
+      {id: generateId(), name: 'Header', byteIndex: '0', value: '0xFF', description: '고정 헤더 (첫번째 바이트)'},
+      {id: generateId(), name: 'Header', byteIndex: '1', value: '0xFF', description: '고정 헤더 (두번째 바이트)'},
+      {
+        id: generateId(),
+        name: 'Size',
+        byteIndex: '2',
+        value: '0x02',
+        description: '이후 바이트 수 (Command + Data + Checksum)'
+      },
+      {id: generateId(), name: 'Command', byteIndex: '3', value: '', description: '명령어 코드'},
+      {id: generateId(), name: 'Checksum', byteIndex: '4', value: '0x00', description: '패킷 유효성 검증용 체크섬'}
+    ];
+  };
+
+  // 초기 고정 필드 ID 설정 - 강화된 로직
   useEffect(() => {
     if (responseFields.length > 0) {
       const header1 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '0');
@@ -35,15 +52,21 @@ export const useResponseFields = (
       const command = responseFields.find(f => f.name === 'Command' && f.byteIndex === '3');
       const checksum = responseFields.find(f => f.name === 'Checksum');
 
-      if (header1 && header2 && size && command && checksum) {
-        setFixedFieldIds({
-          header1Id: header1.id,
-          header2Id: header2.id,
-          sizeId: size.id,
-          commandId: command.id,
-          checksumId: checksum.id
-        });
+      // 필수 필드가 누락된 경우 기본 필드로 초기화
+      if (!header1 || !header2 || !size || !command || !checksum) {
+        console.warn('Required fields missing, initializing default fields');
+        const newFields = createInitialFields();
+        setResponseFields(newFields);
+        return;
       }
+
+      setFixedFieldIds({
+        header1Id: header1.id,
+        header2Id: header2.id,
+        sizeId: size.id,
+        commandId: command.id,
+        checksumId: checksum.id
+      });
     }
   }, [responseFields]);
 
@@ -230,9 +253,44 @@ export const useResponseFields = (
     setOrderedResponseFields(ordered);
   }, [responseFields, fixedFieldIds, commandCode]);
 
-  // 응답 필드 추가
+  // 응답 필드 추가 - 최종 개선 버전
   const addResponseField = () => {
-    // 데이터 필드 수 계산
+    console.log('Adding new field, current fields:', responseFields);
+    console.log('Fixed field IDs:', fixedFieldIds);
+
+    // 고정 필드 ID가 초기화되지 않았다면 초기화
+    if (!fixedFieldIds.checksumId) {
+      console.warn('Fixed field IDs not initialized');
+      const header1 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '0');
+      const header2 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '1');
+      const size = responseFields.find(f => f.name === 'Size' && f.byteIndex === '2');
+      const command = responseFields.find(f => f.name === 'Command' && f.byteIndex === '3');
+      const checksum = responseFields.find(f => f.name === 'Checksum');
+
+      if (header1 && header2 && size && command && checksum) {
+        setFixedFieldIds({
+          header1Id: header1.id,
+          header2Id: header2.id,
+          sizeId: size.id,
+          commandId: command.id,
+          checksumId: checksum.id
+        });
+        // 다음 렌더링에서 처리하도록 리턴
+        return;
+      }
+    }
+
+    // 1. 체크섬 필드 인덱스 및 바이트 인덱스 확인
+    const commandField = responseFields.find(f => f.id === fixedFieldIds.commandId);
+    const checksumField = responseFields.find(f => f.id === fixedFieldIds.checksumId);
+
+    // 고정 필드가 없으면 함수 종료
+    if (!commandField || !checksumField) {
+      console.error('Command or Checksum field missing');
+      return;
+    }
+
+    // 2. 데이터 필드 (Command와 Checksum 사이에 있는 필드들)
     const dataFields = responseFields.filter(f =>
       f.id !== fixedFieldIds.header1Id &&
       f.id !== fixedFieldIds.header2Id &&
@@ -241,10 +299,33 @@ export const useResponseFields = (
       f.id !== fixedFieldIds.checksumId
     );
 
-    // 새 필드 위치 (Command 다음, Checksum 이전)
-    const newByteIndex = (4 + dataFields.length).toString();
+    // 3. byteIndex 기준으로 정렬
+    const sortedDataFields = [...dataFields].sort((a, b) => {
+      const aIndex = parseInt(a.byteIndex);
+      const bIndex = parseInt(b.byteIndex);
+      if (isNaN(aIndex) || isNaN(bIndex)) return 0;
+      return aIndex - bIndex;
+    });
 
-    // 새 필드 추가
+    // 4. 새 필드의 byteIndex 설정 (마지막 데이터 필드 다음)
+    const lastDataByteIndex = sortedDataFields.length > 0
+      ? Math.max(...sortedDataFields.map(f => parseInt(f.byteIndex)))
+      : 3; // Command 필드는 3번 인덱스
+
+    const newByteIndex = (lastDataByteIndex + 1).toString();
+
+    // 5. 체크섬 필드 위치 업데이트
+    const updatedFields = responseFields.map(field => {
+      if (field.id === fixedFieldIds.checksumId) {
+        return {
+          ...field,
+          byteIndex: (parseInt(newByteIndex) + 1).toString()
+        };
+      }
+      return field;
+    });
+
+    // 6. 새 필드 추가
     const newField: PacketField = {
       id: generateId(),
       name: '',
@@ -252,7 +333,11 @@ export const useResponseFields = (
       description: ''
     };
 
-    setResponseFields(prev => [...prev, newField]);
+    const finalFields = [...updatedFields, newField];
+    console.log('Updated fields after adding new field:', finalFields);
+    setResponseFields(finalFields);
+
+    // 7. 다음 렌더링 시 useEffect에서 모든 필드의 byteIndex가 올바르게 재정렬됨
   };
 
   // 응답 필드 삭제

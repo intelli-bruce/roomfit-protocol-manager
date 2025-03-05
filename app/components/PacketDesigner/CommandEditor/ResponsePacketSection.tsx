@@ -18,7 +18,7 @@ const ResponsePacketSection: React.FC<ResponsePacketSectionProps> = ({
                                                                        onAddField,
                                                                        onRemoveField
                                                                      }) => {
-  // 고정 필드 ID 추적 (이 컴포넌트 내에서 필요한 로직만 포함)
+  // 고정 필드 식별
   const isFixedField = (field: PacketField): boolean => {
     return field.name === 'Header' || field.name === 'Size' ||
       field.name === 'Command' || field.name === 'Checksum';
@@ -31,6 +31,17 @@ const ResponsePacketSection: React.FC<ResponsePacketSectionProps> = ({
   const isCommandField = (field: PacketField): boolean => {
     return field.name === 'Command';
   };
+
+  // 중요: byteIndex 기준으로 필드 정렬
+  const sortedFields = [...responseFields].sort((a, b) => {
+    const aIndex = parseInt(a.byteIndex);
+    const bIndex = parseInt(b.byteIndex);
+
+    if (isNaN(aIndex)) return 1;
+    if (isNaN(bIndex)) return -1;
+
+    return aIndex - bIndex;
+  });
 
   return (
     <div className="mb-6">
@@ -51,7 +62,11 @@ const ResponsePacketSection: React.FC<ResponsePacketSectionProps> = ({
           </div>
           <button
             type="button"
-            onClick={onAddField}
+            onClick={(e) => {
+              console.log('Add field button clicked');
+              e.preventDefault(); // 이벤트 버블링 방지
+              onAddField();
+            }}
             className="text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100"
           >
             + 필드 추가
@@ -79,7 +94,8 @@ const ResponsePacketSection: React.FC<ResponsePacketSectionProps> = ({
           </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-          {responseFields.map((field) => {
+          {/* 중요: 정렬된 필드 사용 */}
+          {sortedFields.map((field) => {
             const fixed = isFixedField(field);
             const autoCalculated = isAutoCalculatedField(field);
             const isCommand = isCommandField(field);

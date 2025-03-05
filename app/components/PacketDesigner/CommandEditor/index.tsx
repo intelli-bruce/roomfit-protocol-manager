@@ -48,6 +48,19 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     saveCommand();
   };
 
+  // CommandEditor/index.tsx
+  useEffect(() => {
+    if (command) {
+      console.log('Editing existing command:', command);
+      // command 데이터 구조 확인
+      if (command.response && command.response.fields) {
+        console.log('Command response fields:', command.response.fields);
+      } else {
+        console.warn('Command has invalid structure');
+      }
+    }
+  }, [command]);
+
   return (
     <div className="bg-white rounded-lg">
       {/* 기본 정보 섹션 */}
