@@ -65,9 +65,9 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF'},
-              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x06'},
-              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x04'},
+              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x06', description: ''},
+              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x04', description: ''},
               {id: generateId(), name: 'Raw Position L', byteIndex: '4-5', description: '왼쪽 위치 (16비트, 상위 바이트 먼저)'},
               {id: generateId(), name: 'Raw Position R', byteIndex: '6-7', description: '오른쪽 위치 (16비트, 상위 바이트 먼저)'},
               {id: generateId(), name: 'Checksum', byteIndex: '8', description: '체크섬'}
@@ -91,9 +91,9 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF'},
-              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x04'},
-              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x05'},
+              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x04', description: ''},
+              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x05', description: ''},
               {id: generateId(), name: 'Voltage', byteIndex: '4-5', description: '전압 (16비트, 상위 바이트 먼저)'},
               {id: generateId(), name: 'Checksum', byteIndex: '6', description: '체크섬'}
             ],
@@ -127,9 +127,9 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF'},
-              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x03'},
-              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x65'},
+              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Size', byteIndex: '2', value: '0x03', description: ''},
+              {id: generateId(), name: 'Command', byteIndex: '3', value: '0x65', description: ''},
               {id: generateId(), name: 'On/Off', byteIndex: '4', description: '현재 상태 (0x00 또는 0x01)'},
               {id: generateId(), name: 'Checksum', byteIndex: '5', description: '체크섬'}
             ]

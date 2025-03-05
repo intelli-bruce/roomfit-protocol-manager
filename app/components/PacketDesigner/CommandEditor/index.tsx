@@ -2,12 +2,12 @@
 
 import React from 'react';
 import {Command} from '@/lib/types';
-import {useCommandForm} from "@/components/PacketDesigner/CommandEditor/hooks/useCommandForm";
-import BasicInfoSection from "@/components/PacketDesigner/CommandEditor/BasicInfoSection";
-import RequestPacketSection from "@/components/PacketDesigner/CommandEditor/RequestPacketSection";
-import ResponsePacketSection from "@/components/PacketDesigner/CommandEditor/ResponsePacketSection";
-import ConversionSection from "@/components/PacketDesigner/CommandEditor/ConversionSection";
-import ButtonGroup from "@/components/PacketDesigner/CommandEditor/ButtonGroup";
+import BasicInfoSection from './BasicInfoSection';
+import RequestPacketSection from './RequestPacketSection';
+import ResponsePacketSection from './ResponsePacketSection';
+import ConversionSection from './ConversionSection';
+import ButtonGroup from './ButtonGroup';
+import {useCommandForm} from './hooks/useCommandForm';
 
 interface CommandEditorProps {
   categoryId: string;

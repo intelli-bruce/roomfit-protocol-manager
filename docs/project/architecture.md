@@ -4,6 +4,21 @@
 ├── app
 │   ├── components
 │   │   ├── PacketDesigner
+│   │   │   ├── CommandEditor
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── useCommandForm.ts
+│   │   │   │   │   ├── useConversions.ts
+│   │   │   │   │   ├── useRequestPacket.ts
+│   │   │   │   │   └── useResponseField.ts
+│   │   │   │   ├── BasicInfoSection.tsx
+│   │   │   │   ├── ButtonGroup.tsx
+│   │   │   │   ├── ConversionSection.tsx
+│   │   │   │   ├── RequestPacketSection.tsx
+│   │   │   │   ├── ResponsePacketSection.tsx
+│   │   │   │   └── index.tsx
+│   │   │   ├── shared
+│   │   │   │   ├── types.ts
+│   │   │   │   └── utils.ts
 │   │   │   ├── BasePacketEditor.tsx
 │   │   │   ├── CommandCard.tsx
 │   │   │   ├── CommandEditor.tsx
@@ -41,4 +56,4 @@
 ├── tailwind.config.js
 └── tsconfig.json
 
-12 directories, 28 files
+15 directories, 40 files
