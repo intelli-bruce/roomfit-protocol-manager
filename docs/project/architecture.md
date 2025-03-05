@@ -4,10 +4,12 @@
 ├── app
 │   ├── components
 │   │   ├── PacketDesigner
+│   │   │   ├── BasePacketEditor.tsx
 │   │   │   ├── CommandCard.tsx
 │   │   │   ├── CommandEditor.tsx
 │   │   │   ├── CommandList.tsx
-│   │   │   └── PacketDesginer.tsx
+│   │   │   ├── PacketDesginer.tsx
+│   │   │   └── index.tsx
 │   │   └── UI
 │   │       ├── Header.tsx
 │   │       ├── Modal.tsx
@@ -36,6 +38,7 @@
 ├── package-lock.json
 ├── package.json
 ├── postcss.config.mjs
+├── tailwind.config.js
 └── tsconfig.json
 
-12 directories, 25 files
+12 directories, 28 files
