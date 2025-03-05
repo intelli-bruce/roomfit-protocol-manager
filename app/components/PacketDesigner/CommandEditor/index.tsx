@@ -1,18 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, {useEffect} from 'react';
 import {Command} from '@/lib/types';
-import BasicInfoSection from './BasicInfoSection';
-import RequestPacketSection from './RequestPacketSection';
-import ResponsePacketSection from './ResponsePacketSection';
-import ConversionSection from './ConversionSection';
-import ButtonGroup from './ButtonGroup';
-import {useCommandForm} from './hooks/useCommandForm';
+import {useCommandForm} from "@/components/PacketDesigner/CommandEditor/hooks/useCommandForm";
+import {useResponseFields} from "./hooks/useResponseField";
+import BasicInfoSection from "@/components/PacketDesigner/CommandEditor/BasicInfoSection";
+import RequestPacketSection from "@/components/PacketDesigner/CommandEditor/RequestPacketSection";
+import ResponsePacketSection from "@/components/PacketDesigner/CommandEditor/ResponsePacketSection";
+import ConversionSection from "@/components/PacketDesigner/CommandEditor/ConversionSection";
+import ButtonGroup from "@/components/PacketDesigner/CommandEditor/ButtonGroup";
 
 interface CommandEditorProps {
   categoryId: string;
   command?: Command;
-  onSave: (categoryId: string, command: any) => void;
+  onSave: (categoryId: string, command: Command) => void;
   onCancel: () => void;
 }
 
@@ -24,7 +25,7 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
                                                      }) => {
   const {
     commandData,
-    responseFields,
+    responseFields: commandFormResponseFields,
     calculatedSize,
     calculatedChecksum,
     isPacketValid,
@@ -44,22 +45,32 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     saveCommand
   } = useCommandForm(categoryId, command, onSave);
 
+  // useResponseFields 훅을 직접 사용
+  const {
+    orderedResponseFields,
+    setResponseFields,
+    reorderFields,
+  } = useResponseFields(commandFormResponseFields, commandData.code);
+
+  // commandFormResponseFields가 변경될 때마다 responseFields 업데이트
+  useEffect(() => {
+    if (commandFormResponseFields && commandFormResponseFields.length > 0) {
+      setResponseFields(commandFormResponseFields);
+    }
+  }, [commandFormResponseFields, setResponseFields]);
+
+  // 필드 순서 변경 핸들러
+  const handleReorderFields = (activeId: string, overId: string) => {
+    reorderFields(activeId, overId);
+
+    // 필요하다면 여기에 추가 동기화 로직을 구현할 수 있습니다.
+    // 현재는 useResponseFields 내의 reorderFields가 내부적으로
+    // byteIndex를 올바르게 업데이트하므로 추가 조치 필요 없음
+  };
+
   const handleSave = () => {
     saveCommand();
   };
-
-  // CommandEditor/index.tsx
-  useEffect(() => {
-    if (command) {
-      console.log('Editing existing command:', command);
-      // command 데이터 구조 확인
-      if (command.response && command.response.fields) {
-        console.log('Command response fields:', command.response.fields);
-      } else {
-        console.warn('Command has invalid structure');
-      }
-    }
-  }, [command]);
 
   return (
     <div className="bg-white rounded-lg">
@@ -83,12 +94,13 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
 
       {/* 응답 패킷 섹션 */}
       <ResponsePacketSection
-        responseFields={responseFields}
+        responseFields={orderedResponseFields.length > 0 ? orderedResponseFields : commandFormResponseFields}
         calculatedSize={calculatedSize}
         calculatedChecksum={calculatedChecksum}
         onFieldChange={handleResponseFieldChange}
         onAddField={addResponseField}
         onRemoveField={removeResponseField}
+        onReorderFields={handleReorderFields}
       />
 
       {/* 변환 로직 섹션 */}

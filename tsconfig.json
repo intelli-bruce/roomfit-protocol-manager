@@ -17,6 +17,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "baseUrl": ".",  // 추가된 부분: 현재 디렉토리를 기준으로 설정
     "plugins": [
       {
         "name": "next"

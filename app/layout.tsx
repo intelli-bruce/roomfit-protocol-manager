@@ -2,8 +2,8 @@ import './globals.css';
 import type {Metadata} from 'next';
 import {Inter} from 'next/font/google';
 import {ProtocolProvider} from '@/context/ProtocolContext';
+import React from "react";
 
-const inter = Inter({subsets: ['latin']});
 
 export const metadata: Metadata = {
   title: '룸핏 프로토콜 매니저',
@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-    <body className={inter.className}>
+    <body className={'font-pretendard '}>
     <ProtocolProvider>
       {children}
     </ProtocolProvider>
