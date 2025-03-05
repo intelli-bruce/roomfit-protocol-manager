@@ -370,6 +370,53 @@ export const useResponseFields = (
     return id === fixedFieldIds.sizeId || id === fixedFieldIds.checksumId;
   };
 
+  // 드래그 앤 드롭으로 필드 위치 변경 - dnd-kit 사용 시에도 동일하게 사용 가능
+  const reorderFields = (activeId: string, overId: string) => {
+    // 데이터 필드만 필터링
+    const dataFields = responseFields.filter(field =>
+      !isFixedField(field.id)
+    ).sort((a, b) => {
+      return parseInt(a.byteIndex) - parseInt(b.byteIndex);
+    });
+
+    // activeId와 overId에 해당하는 인덱스 찾기
+    const activeIndex = dataFields.findIndex(field => field.id === activeId);
+    const overIndex = dataFields.findIndex(field => field.id === overId);
+
+    if (activeIndex === -1 || overIndex === -1) return;
+
+    // 배열 순서 변경
+    const newDataFields = [...dataFields];
+    const [movedItem] = newDataFields.splice(activeIndex, 1);
+    newDataFields.splice(overIndex, 0, movedItem);
+
+    // 고정 필드 분리
+    const fixedFields = responseFields.filter(field =>
+      isFixedField(field.id)
+    );
+
+    // 데이터 필드 byteIndex 재할당
+    const updatedDataFields = newDataFields.map((field, index) => ({
+      ...field,
+      byteIndex: (4 + index).toString() // Command(3) 이후부터 시작
+    }));
+
+    // 체크섬 위치 업데이트
+    const checksumField = fixedFields.find(f => f.id === fixedFieldIds.checksumId);
+    if (checksumField) {
+      checksumField.byteIndex = (4 + updatedDataFields.length).toString();
+    }
+
+    // 업데이트된 필드 배열 생성
+    const newFields = [
+      ...fixedFields,
+      ...updatedDataFields
+    ];
+
+    // 상태 업데이트
+    setResponseFields(newFields);
+  };
+
   return {
     responseFields,
     orderedResponseFields,
@@ -380,6 +427,7 @@ export const useResponseFields = (
     addResponseField,
     removeResponseField,
     isFixedField,
-    isAutoCalculatedField
+    isAutoCalculatedField,
+    reorderFields
   };
 };
