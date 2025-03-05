@@ -16,6 +16,7 @@ const CommandList: React.FC<{ selectedCategory: string }> = ({selectedCategory})
     categoryName: string;
     categoryId: string
   }) | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // 드롭다운 상태 추가
 
   // 필터링된 명령어 목록
   const filteredCommands = useMemo(() => {
@@ -81,10 +82,11 @@ const CommandList: React.FC<{ selectedCategory: string }> = ({selectedCategory})
     setEditingCommand(null);
     setCurrentCategoryId(categoryId);
     setShowAddCommandModal(true);
+    setIsDropdownOpen(false); // 드롭다운 닫기
   };
 
   // 명령어 저장 핸들러
-  const handleSaveCommand = (categoryId: string, commandData: any) => {
+  const handleSaveCommand = (categoryId: string, commandData: Omit<Command, 'id'>) => {
     if (editingCommand) {
       dispatch({
         type: 'UPDATE_COMMAND',
@@ -149,9 +151,10 @@ const CommandList: React.FC<{ selectedCategory: string }> = ({selectedCategory})
             </svg>
           </div>
 
-          <div className="relative inline-block text-left group">
+          <div className="relative inline-block text-left">
             <button
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)} // 클릭 시 드롭다운 토글
             >
               <span>명령어 추가</span>
               <svg
@@ -167,19 +170,21 @@ const CommandList: React.FC<{ selectedCategory: string }> = ({selectedCategory})
                 />
               </svg>
             </button>
-            <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover:block z-10">
-              <div className="py-1">
-                {state.categories.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => handleAddNewCommand(category.id)}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {category.name}에 추가
-                  </button>
-                ))}
+            {isDropdownOpen && (
+              <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                <div className="py-1">
+                  {state.categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleAddNewCommand(category.id)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {category.name}에 추가
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
