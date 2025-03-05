@@ -23,11 +23,15 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
                                                        onSave,
                                                        onCancel
                                                      }) => {
+  // 초기 command prop 로깅
+  console.log('[CommandEditor] Initial command prop:', command);
+  console.log('[CommandEditor] Command response fields:', command?.response?.fields);
+
   const {
     commandData,
-    responseFields: initialResponseFields,
-    calculatedSize: initialCalculatedSize,
-    calculatedChecksum: initialCalculatedChecksum,
+    responseFields: commandFormResponseFields,
+    calculatedSize,
+    calculatedChecksum,
     isPacketValid,
     packetError,
     variables,
@@ -36,66 +40,47 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     handleCommandDataChange,
     handlePacketChange,
     handleVariableChange,
-    handleResponseFieldChange: originalHandleResponseFieldChange,
-    addResponseField: originalAddResponseField,
-    removeResponseField: originalRemoveResponseField,
+    handleResponseFieldChange,
+    addResponseField,
+    removeResponseField,
     handleConversionChange,
     addConversion,
     removeConversion,
     saveCommand
   } = useCommandForm(categoryId, command, onSave);
 
-  // useResponseFields 훅 사용
+  // useCommandForm에서 반환한 responseFields 로깅
+  console.log('[CommandEditor] commandFormResponseFields:', commandFormResponseFields);
+
+  // useResponseFields 훅을 직접 사용
   const {
     responseFields,
     orderedResponseFields,
-    calculatedSize,
-    calculatedChecksum,
     setResponseFields,
-    addResponseField,
-    removeResponseField,
     reorderFields,
-  } = useResponseFields(initialResponseFields, commandData.code);
+  } = useResponseFields(commandFormResponseFields, commandData.code);
 
-  // useCommandForm의 응답 필드 상태와 동기화
+  // responseFields와 orderedResponseFields 로깅
+  console.log('[CommandEditor] responseFields:', responseFields);
+  console.log('[CommandEditor] orderedResponseFields:', orderedResponseFields);
+
+  // commandFormResponseFields가 변경될 때마다 responseFields 업데이트
   useEffect(() => {
-    setResponseFields(initialResponseFields);
-  }, [initialResponseFields, setResponseFields]);
+    console.log('[CommandEditor] useEffect triggered, commandFormResponseFields:', commandFormResponseFields);
+    if (commandFormResponseFields && commandFormResponseFields.length > 0) {
+      console.log('[CommandEditor] Updating responseFields');
+      setResponseFields(commandFormResponseFields);
+    }
+  }, [commandFormResponseFields, setResponseFields]);
 
-  // 필드 값 변경 핸들러 - 두 훅 모두 호출
-  const handleResponseFieldChange = (id: string, field: string, value: string) => {
-    // 원래 훅의 핸들러 호출
-    originalHandleResponseFieldChange(id, field, value);
-
-    // 새 필드 값으로 로컬 상태도 업데이트
-    const updatedFields = responseFields.map(f =>
-      f.id === id ? {...f, [field]: value} : f
-    );
-    setResponseFields(updatedFields);
-  };
-
-  // 필드 추가 핸들러
-  const handleAddField = () => {
-    addResponseField();
-    originalAddResponseField();
-  };
-
-  // 필드 삭제 핸들러
-  const handleRemoveField = (id: string) => {
-    removeResponseField(id);
-    originalRemoveResponseField(id);
-  };
-
-  // 순서 변경 핸들러
+  // 필드 순서 변경 핸들러
   const handleReorderFields = (activeId: string, overId: string) => {
+    console.log('[CommandEditor] handleReorderFields called with activeId:', activeId, 'overId:', overId);
     reorderFields(activeId, overId);
-
-    // 원래 훅에도 재정렬된 필드 반영 (필요시)
-    // 이 부분은 useCommandForm 훅이 어떻게 구현되어 있는지에 따라
-    // 추가 작업이 필요할 수 있습니다.
   };
 
   const handleSave = () => {
+    console.log('[CommandEditor] handleSave called, current responseFields:', responseFields);
     saveCommand();
   };
 
@@ -121,12 +106,12 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
 
       {/* 응답 패킷 섹션 */}
       <ResponsePacketSection
-        responseFields={orderedResponseFields}
+        responseFields={orderedResponseFields.length > 0 ? orderedResponseFields : commandFormResponseFields}
         calculatedSize={calculatedSize}
         calculatedChecksum={calculatedChecksum}
         onFieldChange={handleResponseFieldChange}
-        onAddField={handleAddField}
-        onRemoveField={handleRemoveField}
+        onAddField={addResponseField}
+        onRemoveField={removeResponseField}
         onReorderFields={handleReorderFields}
       />
 

@@ -15,9 +15,16 @@ export const initialState: Protocol = {
       {
         id: generateId(),
         name: 'Header',
-        byteIndex: '0-1',
-        value: '0xFF, 0xFF',
-        description: '고정값'
+        byteIndex: '0',
+        value: '0xFF',
+        description: '첫번째 바이트 고정값'
+      },
+      {
+        id: generateId(),
+        name: 'Header',
+        byteIndex: '1',
+        value: '0xFF',
+        description: '두번째 바이트 고정값'
       },
       {
         id: generateId(),
@@ -34,13 +41,13 @@ export const initialState: Protocol = {
       {
         id: generateId(),
         name: 'Data',
-        byteIndex: '4 ~ (2 + Size - 1)',
-        description: '명령어에 따른 데이터 (없을 수도 있음)'
+        byteIndex: '4',
+        description: '명령어에 따른 데이터 시작 위치 (없을 수도 있음)'
       },
       {
         id: generateId(),
         name: 'Checksum',
-        byteIndex: '(2 + Size)',
+        byteIndex: '5',
         description: '패킷 유효성 검증용 체크섬'
       }
     ]
@@ -65,11 +72,14 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Header', byteIndex: '0', value: '0xFF', description: '첫번째 헤더 바이트'},
+              {id: generateId(), name: 'Header', byteIndex: '1', value: '0xFF', description: '두번째 헤더 바이트'},
               {id: generateId(), name: 'Size', byteIndex: '2', value: '0x06', description: ''},
               {id: generateId(), name: 'Command', byteIndex: '3', value: '0x04', description: ''},
-              {id: generateId(), name: 'Raw Position L', byteIndex: '4-5', description: '왼쪽 위치 (16비트, 상위 바이트 먼저)'},
-              {id: generateId(), name: 'Raw Position R', byteIndex: '6-7', description: '오른쪽 위치 (16비트, 상위 바이트 먼저)'},
+              {id: generateId(), name: 'Raw Position L', byteIndex: '4', description: '왼쪽 위치 (상위 바이트)'},
+              {id: generateId(), name: 'Raw Position L', byteIndex: '5', description: '왼쪽 위치 (하위 바이트)'},
+              {id: generateId(), name: 'Raw Position R', byteIndex: '6', description: '오른쪽 위치 (상위 바이트)'},
+              {id: generateId(), name: 'Raw Position R', byteIndex: '7', description: '오른쪽 위치 (하위 바이트)'},
               {id: generateId(), name: 'Checksum', byteIndex: '8', description: '체크섬'}
             ],
             conversion: [
@@ -91,10 +101,12 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Header', byteIndex: '0', value: '0xFF', description: '첫번째 헤더 바이트'},
+              {id: generateId(), name: 'Header', byteIndex: '1', value: '0xFF', description: '두번째 헤더 바이트'},
               {id: generateId(), name: 'Size', byteIndex: '2', value: '0x04', description: ''},
               {id: generateId(), name: 'Command', byteIndex: '3', value: '0x05', description: ''},
-              {id: generateId(), name: 'Voltage', byteIndex: '4-5', description: '전압 (16비트, 상위 바이트 먼저)'},
+              {id: generateId(), name: 'Voltage', byteIndex: '4', description: '전압 (상위 바이트)'},
+              {id: generateId(), name: 'Voltage', byteIndex: '5', description: '전압 (하위 바이트)'},
               {id: generateId(), name: 'Checksum', byteIndex: '6', description: '체크섬'}
             ],
             conversion: [
@@ -127,7 +139,8 @@ export const initialState: Protocol = {
           },
           response: {
             fields: [
-              {id: generateId(), name: 'Header', byteIndex: '0-1', value: '0xFF, 0xFF', description: ''},
+              {id: generateId(), name: 'Header', byteIndex: '0', value: '0xFF', description: '첫번째 헤더 바이트'},
+              {id: generateId(), name: 'Header', byteIndex: '1', value: '0xFF', description: '두번째 헤더 바이트'},
               {id: generateId(), name: 'Size', byteIndex: '2', value: '0x03', description: ''},
               {id: generateId(), name: 'Command', byteIndex: '3', value: '0x65', description: ''},
               {id: generateId(), name: 'On/Off', byteIndex: '4', description: '현재 상태 (0x00 또는 0x01)'},

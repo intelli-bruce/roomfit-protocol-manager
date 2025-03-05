@@ -3,6 +3,61 @@ import {PacketField} from '@/lib/types';
 import {generateId} from '@/lib/initialState';
 import {calculateChecksum} from '@/utils/packetUtils';
 
+// byteIndex 문자열을 분석하여 시작 바이트 인덱스를 반환
+const getStartByteIndex = (byteIndexStr: string): number => {
+  // '4-5', '6-7'와 같은 형식 처리
+  if (byteIndexStr.includes('-')) {
+    return parseInt(byteIndexStr.split('-')[0]);
+  }
+  // 'x ~ y' 형식 처리
+  if (byteIndexStr.includes('~')) {
+    const parts = byteIndexStr.split('~').map(p => p.trim());
+    return parseInt(parts[0]);
+  }
+  // 단일 숫자 처리
+  return parseInt(byteIndexStr);
+};
+
+// byteIndex 문자열을 분석하여 바이트 길이 계산
+const getByteLength = (byteIndexStr: string): number => {
+  // '4-5', '6-7'와 같은 형식 처리
+  if (byteIndexStr.includes('-')) {
+    const [start, end] = byteIndexStr.split('-').map(n => parseInt(n));
+    return end - start + 1;
+  }
+  // 'x ~ y' 형식 처리
+  if (byteIndexStr.includes('~')) {
+    const parts = byteIndexStr.split('~').map(p => p.trim());
+    if (parts.length === 2) {
+      const start = parseInt(parts[0]);
+      const end = parseInt(parts[1]);
+      if (!isNaN(start) && !isNaN(end)) {
+        return end - start + 1;
+      }
+    }
+  }
+  // 단일 숫자는 1 바이트
+  return 1;
+};
+
+// 새 byteIndex 형식 생성 (기존 형식 유지)
+const createByteIndexFormat = (startByte: number, length: number, originalFormat: string): string => {
+  // 기존 형식이 'x-y' 형태인 경우
+  if (originalFormat.includes('-')) {
+    return `${startByte}-${startByte + length - 1}`;
+  }
+  // 기존 형식이 'x ~ y' 형태인 경우
+  if (originalFormat.includes('~')) {
+    return `${startByte} ~ ${startByte + length - 1}`;
+  }
+  // 단일 바이트인 경우 그냥 숫자로 반환
+  if (length === 1) {
+    return startByte.toString();
+  }
+  // 기본적으로 'x-y' 형식 사용
+  return `${startByte}-${startByte + length - 1}`;
+};
+
 export const useResponseFields = (
   initialFields: PacketField[],
   commandCode: string
@@ -46,10 +101,31 @@ export const useResponseFields = (
   // 초기 고정 필드 ID 설정 - 강화된 로직
   useEffect(() => {
     if (responseFields.length > 0) {
-      const header1 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '0');
-      const header2 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '1');
-      const size = responseFields.find(f => f.name === 'Size' && f.byteIndex === '2');
-      const command = responseFields.find(f => f.name === 'Command' && f.byteIndex === '3');
+      // 0번 byteIndex를 가진 Header 필드 찾기 (첫 번째 바이트)
+      const header1 = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Header' && startByte === 0;
+      });
+
+      // 1번 byteIndex를 가진 Header 필드 찾기 (두 번째 바이트)
+      const header2 = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Header' && startByte === 1;
+      });
+
+      // 2번 byteIndex를 가진 Size 필드 찾기
+      const size = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Size' && startByte === 2;
+      });
+
+      // 3번 byteIndex를 가진 Command 필드 찾기
+      const command = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Command' && startByte === 3;
+      });
+
+      // Checksum 필드 찾기 (마지막 바이트)
       const checksum = responseFields.find(f => f.name === 'Checksum');
 
       // 필수 필드가 누락된 경우 기본 필드로 초기화
@@ -103,8 +179,8 @@ export const useResponseFields = (
 
     // 데이터 필드 순서 정렬 (바이트 인덱스 기준)
     const sortedDataFields = [...dataFields].sort((a, b) => {
-      const aIndex = parseInt(a.byteIndex);
-      const bIndex = parseInt(b.byteIndex);
+      const aIndex = getStartByteIndex(a.byteIndex);
+      const bIndex = getStartByteIndex(b.byteIndex);
       if (isNaN(aIndex) || isNaN(bIndex)) return 0;
       return aIndex - bIndex;
     });
@@ -112,23 +188,32 @@ export const useResponseFields = (
     // 바이트 인덱스 재할당
     const updatedFields = [...responseFields];
     let needsUpdate = false;
+    let currentByteIndex = 4; // Command(3) 이후부터 시작
 
-    sortedDataFields.forEach((field, index) => {
-      const correctByteIndex = (4 + index).toString(); // Command(3) 이후
+    sortedDataFields.forEach((field) => {
       const fieldIndex = updatedFields.findIndex(f => f.id === field.id);
-      if (fieldIndex !== -1 && updatedFields[fieldIndex].byteIndex !== correctByteIndex) {
+      const currentStartByte = getStartByteIndex(field.byteIndex);
+      const byteLength = getByteLength(field.byteIndex);
+
+      if (fieldIndex !== -1 && currentStartByte !== currentByteIndex) {
+        // 기존 형식을 유지하면서 새 바이트 인덱스 생성
+        const newByteIndex = createByteIndexFormat(currentByteIndex, byteLength, field.byteIndex);
+
         updatedFields[fieldIndex] = {
           ...updatedFields[fieldIndex],
-          byteIndex: correctByteIndex
+          byteIndex: newByteIndex
         };
         needsUpdate = true;
       }
+
+      // 다음 필드의 시작 위치는 현재 필드 길이만큼 이동
+      currentByteIndex += byteLength;
     });
 
     // 체크섬 위치 계산 및 업데이트
-    const checksumByteIndex = (4 + sortedDataFields.length).toString();
+    const checksumByteIndex = currentByteIndex.toString();
     const checksumIndex = updatedFields.findIndex(f => f.id === fixedFieldIds.checksumId);
-    if (checksumIndex !== -1 && updatedFields[checksumIndex].byteIndex !== checksumByteIndex) {
+    if (checksumIndex !== -1 && getStartByteIndex(updatedFields[checksumIndex].byteIndex).toString() !== checksumByteIndex) {
       updatedFields[checksumIndex] = {
         ...updatedFields[checksumIndex],
         byteIndex: checksumByteIndex
@@ -141,8 +226,14 @@ export const useResponseFields = (
       return; // 다음 렌더링에서 나머지 처리
     }
 
-    // 사이즈 계산 (Command + 데이터 필드 + Checksum)
-    const sizeValue = sortedDataFields.length + 2; // Command(1) + 데이터 필드(n) + Checksum(1)
+    // 사이즈 계산 (Command + 데이터 필드 총 길이 + Checksum)
+    // 각 필드의 바이트 길이를 계산하여 합산
+    let totalDataByteLength = 0;
+    sortedDataFields.forEach(field => {
+      totalDataByteLength += getByteLength(field.byteIndex);
+    });
+
+    const sizeValue = 1 + totalDataByteLength + 1; // Command(1) + 데이터 필드(n) + Checksum(1)
     const sizeHex = `0x${sizeValue.toString(16).padStart(2, '0').toUpperCase()}`;
     setCalculatedSize(sizeHex);
 
@@ -178,12 +269,38 @@ export const useResponseFields = (
         packetBytes.push(0);
       }
 
-      // 데이터 필드
+      // 데이터 필드 - 각 필드의 바이트 길이에 맞게 추가
       sortedDataFields.forEach(field => {
+        const byteLength = getByteLength(field.byteIndex);
+
+        // 값이 있는 경우
         if (field.value && field.value.startsWith('0x')) {
-          packetBytes.push(parseInt(field.value, 16));
-        } else {
-          packetBytes.push(0);
+          // 단일 바이트 값
+          if (byteLength === 1) {
+            packetBytes.push(parseInt(field.value, 16));
+          }
+          // 다중 바이트 값 (예: 0xABCD)는 분리해서 처리
+          else if (field.value.length > 2) {
+            const valueInt = parseInt(field.value, 16);
+            // 상위 바이트부터 순서대로 추가
+            for (let i = byteLength - 1; i >= 0; i--) {
+              const byteMask = 0xFF << (i * 8);
+              const byteValue = (valueInt & byteMask) >> (i * 8);
+              packetBytes.push(byteValue);
+            }
+          }
+          // 기본 처리 (각 바이트를 0으로 추가)
+          else {
+            for (let i = 0; i < byteLength; i++) {
+              packetBytes.push(0);
+            }
+          }
+        }
+        // 값이 없는 경우 0으로 채움
+        else {
+          for (let i = 0; i < byteLength; i++) {
+            packetBytes.push(0);
+          }
         }
       });
 
@@ -261,10 +378,26 @@ export const useResponseFields = (
     // 고정 필드 ID가 초기화되지 않았다면 초기화
     if (!fixedFieldIds.checksumId) {
       console.warn('Fixed field IDs not initialized');
-      const header1 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '0');
-      const header2 = responseFields.find(f => f.name === 'Header' && f.byteIndex === '1');
-      const size = responseFields.find(f => f.name === 'Size' && f.byteIndex === '2');
-      const command = responseFields.find(f => f.name === 'Command' && f.byteIndex === '3');
+      const header1 = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Header' && startByte === 0;
+      });
+
+      const header2 = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Header' && startByte === 1;
+      });
+
+      const size = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Size' && startByte === 2;
+      });
+
+      const command = responseFields.find(f => {
+        const startByte = getStartByteIndex(f.byteIndex);
+        return f.name === 'Command' && startByte === 3;
+      });
+
       const checksum = responseFields.find(f => f.name === 'Checksum');
 
       if (header1 && header2 && size && command && checksum) {
@@ -301,18 +434,23 @@ export const useResponseFields = (
 
     // 3. byteIndex 기준으로 정렬
     const sortedDataFields = [...dataFields].sort((a, b) => {
-      const aIndex = parseInt(a.byteIndex);
-      const bIndex = parseInt(b.byteIndex);
+      const aIndex = getStartByteIndex(a.byteIndex);
+      const bIndex = getStartByteIndex(b.byteIndex);
       if (isNaN(aIndex) || isNaN(bIndex)) return 0;
       return aIndex - bIndex;
     });
 
     // 4. 새 필드의 byteIndex 설정 (마지막 데이터 필드 다음)
-    const lastDataByteIndex = sortedDataFields.length > 0
-      ? Math.max(...sortedDataFields.map(f => parseInt(f.byteIndex)))
-      : 3; // Command 필드는 3번 인덱스
+    let lastDataByteIndex = 3; // Command 필드는 3번 인덱스
+    let lastDataByteLength = 0;
 
-    const newByteIndex = (lastDataByteIndex + 1).toString();
+    if (sortedDataFields.length > 0) {
+      const lastField = sortedDataFields[sortedDataFields.length - 1];
+      lastDataByteIndex = getStartByteIndex(lastField.byteIndex);
+      lastDataByteLength = getByteLength(lastField.byteIndex);
+    }
+
+    const newByteIndex = (lastDataByteIndex + lastDataByteLength).toString();
 
     // 5. 체크섬 필드 위치 업데이트
     const updatedFields = responseFields.map(field => {
@@ -370,13 +508,13 @@ export const useResponseFields = (
     return id === fixedFieldIds.sizeId || id === fixedFieldIds.checksumId;
   };
 
-  // 드래그 앤 드롭으로 필드 위치 변경 - dnd-kit 사용 시에도 동일하게 사용 가능
+  // 드래그 앤 드롭으로 필드 위치 변경
   const reorderFields = (activeId: string, overId: string) => {
     // 데이터 필드만 필터링
     const dataFields = responseFields.filter(field =>
       !isFixedField(field.id)
     ).sort((a, b) => {
-      return parseInt(a.byteIndex) - parseInt(b.byteIndex);
+      return getStartByteIndex(a.byteIndex) - getStartByteIndex(b.byteIndex);
     });
 
     // activeId와 overId에 해당하는 인덱스 찾기
@@ -396,15 +534,25 @@ export const useResponseFields = (
     );
 
     // 데이터 필드 byteIndex 재할당
-    const updatedDataFields = newDataFields.map((field, index) => ({
-      ...field,
-      byteIndex: (4 + index).toString() // Command(3) 이후부터 시작
-    }));
+    const updatedDataFields = [];
+    let currentByteIndex = 4; // Command(3) 이후부터 시작
+
+    for (const field of newDataFields) {
+      const byteLength = getByteLength(field.byteIndex);
+      const newByteIndex = createByteIndexFormat(currentByteIndex, byteLength, field.byteIndex);
+
+      updatedDataFields.push({
+        ...field,
+        byteIndex: newByteIndex
+      });
+
+      currentByteIndex += byteLength;
+    }
 
     // 체크섬 위치 업데이트
     const checksumField = fixedFields.find(f => f.id === fixedFieldIds.checksumId);
     if (checksumField) {
-      checksumField.byteIndex = (4 + updatedDataFields.length).toString();
+      checksumField.byteIndex = currentByteIndex.toString();
     }
 
     // 업데이트된 필드 배열 생성
