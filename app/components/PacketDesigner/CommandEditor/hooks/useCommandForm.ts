@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react';
 import {Command, PacketField} from '@/lib/types';
 import {generateId} from '@/lib/initialState';
-import {useRequestFields} from './useRequestFields';
+import {useRequestFields, Variable as RequestVariable, RequestField} from './useRequestFields';
 import {useConversions} from './useConversions';
 import {useResponseFields} from "@/components/PacketDesigner/CommandEditor/hooks/useResponseField";
 
@@ -13,6 +13,32 @@ export interface CommandVariable {
   position: number;
 }
 
+// 컨버전 타입 명시적 정의
+export interface Conversion {
+  field: string;
+  formula: string;
+  unit?: string;
+}
+
+// 명령어 데이터 타입
+export interface CommandData {
+  name: string;
+  code: string;
+  description: string;
+  request: {
+    packet: string;
+    fields: {
+      name: string;
+      value: string;
+    }[];
+    variables: CommandVariable[];
+  };
+  response: {
+    fields: PacketField[];
+    conversion: Conversion[];
+  };
+}
+
 export const useCommandForm = (
   categoryId: string,
   initialCommand?: Command,
@@ -20,6 +46,7 @@ export const useCommandForm = (
 ) => {
   // 초기 명령어 로깅
   console.log('useCommandForm initialCommand:', initialCommand);
+
   // 초기 고정 필드 생성
   const createInitialFields = (): PacketField[] => {
     return [
@@ -40,8 +67,16 @@ export const useCommandForm = (
   // 기존 명령어가 있는 경우 그 값을 사용, 없으면 초기값 생성
   const initialFields = initialCommand?.response?.fields || createInitialFields();
 
+  // 초기 변수 타입 변환
+  const initialVariables: CommandVariable[] = initialCommand?.request?.variables?.map(v => ({
+    name: v.name,
+    description: v.description || '',
+    defaultValue: v.defaultValue,
+    position: v.position || 0
+  })) || [];
+
   // 기본 상태 설정
-  const initialCommandState = {
+  const initialCommandState: CommandData = {
     name: initialCommand?.name || '',
     code: initialCommand?.code || '',
     description: initialCommand?.description || '',
@@ -51,7 +86,7 @@ export const useCommandForm = (
         {name: 'Size', value: ''},
         {name: 'Data', value: ''}
       ],
-      variables: initialCommand?.request?.variables || []
+      variables: initialVariables
     },
     response: {
       fields: initialFields,
@@ -59,7 +94,7 @@ export const useCommandForm = (
     }
   };
 
-  const [commandData, setCommandData] = useState(initialCommandState);
+  const [commandData, setCommandData] = useState<CommandData>(initialCommandState);
 
   // 요청 필드 커스텀 훅 사용
   const {
@@ -79,7 +114,7 @@ export const useCommandForm = (
     reorderFields: reorderRequestFields,
     isFixedField: isRequestFixedField,
     isAutoCalculatedField: isRequestAutoCalculatedField
-  } = useRequestFields(initialCommandState.request.packet, initialCommandState.request.variables as CommandVariable[]);
+  } = useRequestFields(initialCommandState.request.packet, initialCommandState.request.variables);
 
   // 응답 필드 커스텀 훅 사용
   const {
@@ -141,7 +176,9 @@ export const useCommandForm = (
   const handleVariableChange = (index: number, field: string, value: string) => {
     setVariables(prev => {
       const updated = [...prev];
-      updated[index] = {...updated[index], [field]: value};
+      if (updated[index]) {
+        updated[index] = {...updated[index], [field]: value};
+      }
       return updated;
     });
   };
@@ -225,7 +262,7 @@ export const useCommandForm = (
       description: field.description || ''
     }));
 
-    const updatedCommand = {
+    const updatedCommand: Command = {
       // 기존 명령어 ID 유지 또는 새 ID 생성
       id: initialCommand?.id || generateId(),
       ...commandData,

@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {generateId} from '@/lib/initialState';
 import {calculateChecksum} from '@/utils/packetUtils';
 
@@ -10,6 +10,13 @@ export interface RequestField {
   description: string;
   isVariable?: boolean;
   variableName?: string;
+}
+
+export interface Variable {
+  name: string;
+  description: string;
+  defaultValue: string;
+  position: number;
 }
 
 // byteIndex 문자열을 분석하여 시작 바이트 인덱스를 반환
@@ -69,13 +76,13 @@ const createByteIndexFormat = (startByte: number, length: number, originalFormat
 
 export const useRequestFields = (
   initialPacket: string = '',
-  initialVariables: any[] = []
+  initialVariables: Variable[] = []
 ) => {
   const [requestFields, setRequestFields] = useState<RequestField[]>([]);
   const [requestPacket, setRequestPacket] = useState(initialPacket);
   const [isPacketValid, setIsPacketValid] = useState(true);
   const [packetError, setPacketError] = useState('');
-  const [variables, setVariables] = useState<any[]>(initialVariables);
+  const [variables, setVariables] = useState<Variable[]>(initialVariables);
   const [calculatedSize, setCalculatedSize] = useState('0x02');
   const [calculatedChecksum, setCalculatedChecksum] = useState('0x00');
 
@@ -87,6 +94,12 @@ export const useRequestFields = (
     commandId: '',
     checksumId: ''
   });
+
+  // 필드 업데이트 플래그 - 변경 추적용
+  const [shouldUpdateFields, setShouldUpdateFields] = useState(false);
+
+  // 마지막으로 계산된 필드 상태를 저장하는 ref
+  const lastCalculatedFields = useRef<RequestField[]>([]);
 
   // 초기 고정 필드 생성 함수
   const createInitialFields = (): RequestField[] => {
@@ -107,17 +120,23 @@ export const useRequestFields = (
 
   // 초기화: 패킷 문자열에서 필드 생성
   useEffect(() => {
-    if (initialPacket) {
+    if (initialPacket && requestFields.length === 0) {
       const fields = parsePacketToFields(initialPacket, initialVariables);
       setRequestFields(fields);
 
       // 고정 필드 ID 설정
       setFixedFieldIdsFromFields(fields);
+
+      // 초기 필드를 마지막 계산된 필드로 설정
+      lastCalculatedFields.current = fields;
     } else if (requestFields.length === 0) {
       // 초기 패킷이 없으면 기본 필드 생성
       const initialFields = createInitialFields();
       setRequestFields(initialFields);
       setFixedFieldIdsFromFields(initialFields);
+
+      // 초기 필드를 마지막 계산된 필드로 설정
+      lastCalculatedFields.current = initialFields;
     }
   }, [initialPacket, initialVariables]);
 
@@ -141,7 +160,7 @@ export const useRequestFields = (
   };
 
   // 패킷 문자열을 필드로 파싱
-  const parsePacketToFields = (packetStr: string, vars: any[] = []): RequestField[] => {
+  const parsePacketToFields = (packetStr: string, vars: Variable[] = []): RequestField[] => {
     const fields: RequestField[] = [];
 
     // 기본 고정 필드 먼저 추가
@@ -167,7 +186,7 @@ export const useRequestFields = (
         const byteValue = bytes[i];
         const isVariable = byteValue.includes('${');
 
-        let fieldName = `Data ${i - 3}`;
+        let fieldName = `Data ${i-3}`;
         let fieldValue = byteValue;
         let variableName = '';
 
@@ -233,7 +252,7 @@ export const useRequestFields = (
     return `[${packetParts.join(', ')}]`;
   };
 
-  // 필드 변경 처리
+  // 필드 변경 처리 - 필드 변경 시 업데이트 플래그 설정
   const handleFieldChange = (id: string, field: string, value: string) => {
     // 고정 필드 식별
     const isHeader = id === fixedFieldIds.header1Id || id === fixedFieldIds.header2Id;
@@ -246,12 +265,14 @@ export const useRequestFields = (
     }
 
     // 필드 업데이트
-    setRequestFields(prev =>
-      prev.map(f => f.id === id ? {...f, [field]: value} : f)
-    );
+    setRequestFields(prev => {
+      const updated = prev.map(f => f.id === id ? {...f, [field]: value} : f);
+      setShouldUpdateFields(true);
+      return updated;
+    });
   };
 
-  // 필드 추가
+  // 필드 추가 - 필드 추가 시 업데이트 플래그 설정
   const addField = () => {
     const commandField = requestFields.find(f => f.id === fixedFieldIds.commandId);
     const checksumField = requestFields.find(f => f.id === fixedFieldIds.checksumId);
@@ -310,9 +331,10 @@ export const useRequestFields = (
     };
 
     setRequestFields([...updatedFields, newField]);
+    setShouldUpdateFields(true);
   };
 
-  // 필드 삭제
+  // 필드 삭제 - 필드 삭제 시 업데이트 플래그 설정
   const removeField = (id: string) => {
     // 고정 필드는 삭제 불가
     if (
@@ -327,9 +349,10 @@ export const useRequestFields = (
     }
 
     setRequestFields(prev => prev.filter(f => f.id !== id));
+    setShouldUpdateFields(true);
   };
 
-  // 필드 순서 변경
+  // 필드 순서 변경 - 순서 변경 시 업데이트 플래그 설정
   const reorderFields = (activeId: string, overId: string) => {
     // 데이터 필드만 필터링
     const dataFields = requestFields.filter(field =>
@@ -384,6 +407,7 @@ export const useRequestFields = (
 
     // 상태 업데이트
     setRequestFields(newFields);
+    setShouldUpdateFields(true);
   };
 
   // 필드 상태 체크
@@ -399,9 +423,16 @@ export const useRequestFields = (
     return id === fixedFieldIds.sizeId || id === fixedFieldIds.checksumId;
   };
 
-  // 필드 변경시 패킷 문자열 업데이트 및 변수 추출
+  // 필드 변경시 패킷 문자열 업데이트 및 변수 추출 - 중요 수정: 무한 루프 방지
   useEffect(() => {
-    if (requestFields.length > 0) {
+    // requestFields가 변경되고 업데이트 플래그가 설정된 경우에만 실행
+    if (requestFields.length > 0 && shouldUpdateFields) {
+      // 동일한 계산을 반복하지 않도록 체크
+      if (JSON.stringify(requestFields) === JSON.stringify(lastCalculatedFields.current)) {
+        setShouldUpdateFields(false);
+        return;
+      }
+
       // 사이즈 계산
       const dataFields = requestFields.filter(f =>
         f.id !== fixedFieldIds.header1Id &&
@@ -416,7 +447,10 @@ export const useRequestFields = (
       setCalculatedSize(sizeHex);
 
       // Size 필드 업데이트
-      const updatedFields = requestFields.map(field => {
+      let updatedFields = [...requestFields];
+
+      // Size 필드 업데이트
+      updatedFields = updatedFields.map(field => {
         if (field.id === fixedFieldIds.sizeId) {
           return {...field, value: sizeHex};
         }
@@ -456,14 +490,15 @@ export const useRequestFields = (
           return field;
         });
 
-        setRequestFields(finalFields);
+        // 마지막 계산된 필드 상태 저장
+        lastCalculatedFields.current = finalFields;
 
-        // 패킷 문자열 및 변수 업데이트
+        // 패킷 문자열 업데이트
         const newPacket = generatePacketFromFields(finalFields);
         setRequestPacket(newPacket);
 
         // 변수 업데이트 (변수를 사용하는 필드에서 추출)
-        const newVariables = finalFields
+        const newVariables: Variable[] = finalFields
           .filter(f => f.isVariable && f.variableName)
           .map(f => {
             const existingVar = variables.find(v => v.name === f.variableName);
@@ -475,7 +510,16 @@ export const useRequestFields = (
             };
           });
 
-        setVariables(newVariables);
+        // 실제 변경된 경우에만 상태 업데이트
+        if (JSON.stringify(finalFields) !== JSON.stringify(requestFields)) {
+          setRequestFields(finalFields);
+        }
+
+        // 변수가 변경된 경우에만 업데이트
+        if (JSON.stringify(newVariables) !== JSON.stringify(variables)) {
+          setVariables(newVariables);
+        }
+
         setIsPacketValid(true);
         setPacketError('');
       } catch (error) {
@@ -483,8 +527,11 @@ export const useRequestFields = (
         setIsPacketValid(false);
         setPacketError('패킷 형식이 올바르지 않습니다.');
       }
+
+      // 업데이트 플래그 초기화
+      setShouldUpdateFields(false);
     }
-  }, [requestFields, fixedFieldIds]);
+  }, [requestFields, shouldUpdateFields, fixedFieldIds, variables]);
 
   return {
     requestFields,

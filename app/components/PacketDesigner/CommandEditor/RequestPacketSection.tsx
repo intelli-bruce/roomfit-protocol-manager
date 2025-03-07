@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {RequestField} from '@/components/PacketDesigner/CommandEditor/hooks/useRequestFields';
+import {RequestField, Variable} from '@/components/PacketDesigner/CommandEditor/hooks/useRequestFields';
 import {
   DndContext,
   closestCenter,
@@ -24,7 +24,7 @@ interface RequestPacketSectionProps {
   packetError: string;
   calculatedSize: string;
   calculatedChecksum: string;
-  variables: any[];
+  variables: Variable[];
   onFieldChange: (id: string, field: string, value: string) => void;
   onVariableChange: (index: number, field: string, value: string) => void;
   onAddField: () => void;
@@ -405,8 +405,7 @@ const RequestPacketSection: React.FC<RequestPacketSectionProps> = ({
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
               {variables.map((variable, index) => (
-                <tr key={index}
-                    className="hover:bg-gray-50">
+                <tr key={index} className="hover:bg-gray-50">
                   <td className="px-3 py-2">
                     <span className="font-medium">{variable.name}</span>
                   </td>

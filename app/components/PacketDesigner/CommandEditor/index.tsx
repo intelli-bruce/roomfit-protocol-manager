@@ -1,7 +1,7 @@
 'use client';
 
-import React, {useEffect} from 'react';
-import {Command} from '@/lib/types';
+import React, {useEffect, useRef} from 'react';
+import {Command, PacketField} from '@/lib/types';
 import {useCommandForm} from "@/components/PacketDesigner/CommandEditor/hooks/useCommandForm";
 import {useResponseFields} from "./hooks/useResponseField";
 import BasicInfoSection from "@/components/PacketDesigner/CommandEditor/BasicInfoSection";
@@ -23,6 +23,9 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
                                                        onSave,
                                                        onCancel
                                                      }) => {
+  // 이전 응답 필드 상태 참조 - 무한 루프 방지
+  const prevResponseFieldsRef = useRef<PacketField[]>([]);
+
   const {
     commandData,
     requestFields,
@@ -50,7 +53,7 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     saveCommand,
     isRequestFixedField,
     isRequestAutoCalculatedField,
-    reorderRequestFields
+    reorderRequestFields,
   } = useCommandForm(categoryId, command, onSave);
 
   // useResponseFields 훅을 직접 사용
@@ -60,10 +63,17 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     reorderFields,
   } = useResponseFields(commandFormResponseFields, commandData.code);
 
-  // commandFormResponseFields가 변경될 때마다 responseFields 업데이트
+  // commandFormResponseFields가 변경될 때마다 responseFields 업데이트 - 무한 루프 방지 로직 추가
   useEffect(() => {
     if (commandFormResponseFields && commandFormResponseFields.length > 0) {
-      setResponseFields(commandFormResponseFields);
+      // 이전 상태와 현재 상태를 비교하여 실제로 변경된 경우에만 업데이트
+      const prevFieldsJson = JSON.stringify(prevResponseFieldsRef.current);
+      const currentFieldsJson = JSON.stringify(commandFormResponseFields);
+
+      if (prevFieldsJson !== currentFieldsJson) {
+        setResponseFields(commandFormResponseFields);
+        prevResponseFieldsRef.current = commandFormResponseFields;
+      }
     }
   }, [commandFormResponseFields, setResponseFields]);
 
