@@ -242,153 +242,156 @@ const RequestPacketSection: React.FC<RequestPacketSectionProps> = ({
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-          <tr>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">바이트</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">필드명</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">값</th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">설명</th>
-            <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">작업</th>
-          </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-          {/* 고정 헤더 필드 (0, 1, 2, 3 바이트) */}
-          {headerFields.map(field => (
-            <tr key={field.id}
-                className="hover:bg-gray-50">
-              <td className="px-3 py-2 whitespace-nowrap">
-                <div className="flex items-center">
-                  <span className="font-mono text-gray-800">{field.byteIndex}</span>
-                  <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">고정</span>
-                </div>
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap">
-                <span className="font-medium">{field.name}</span>
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap">
-                {isAutoCalculatedField(field.id) ? (
+      {/* DndContext로 전체 테이블 영역 감싸기 */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        {/* 첫 번째 테이블: 헤더 필드 */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">바이트</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">필드명</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">값</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">설명</th>
+              <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">작업</th>
+            </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+            {/* 고정 헤더 필드 (0, 1, 2, 3 바이트) */}
+            {headerFields.map(field => (
+              <tr key={field.id}
+                  className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap">
                   <div className="flex items-center">
-                    <span className="text-gray-500">{field.value}</span>
-                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
+                    <span className="font-mono text-gray-800">{field.byteIndex}</span>
+                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">고정</span>
                   </div>
-                ) : isCommandField(field) ? (
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <span className="font-medium">{field.name}</span>
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {isAutoCalculatedField(field.id) ? (
+                    <div className="flex items-center">
+                      <span className="text-gray-500">{field.value}</span>
+                      <span className="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
+                    </div>
+                  ) : isCommandField(field) ? (
+                    <input
+                      type="text"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
+                      value={field.value || ''}
+                      onChange={(e) => onFieldChange(field.id, 'value', e.target.value)}
+                      placeholder="명령어 코드와 동일"
+                    />
+                  ) : (
+                    <span className="text-gray-500">{field.value}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
                   <input
                     type="text"
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
-                    value={field.value || ''}
-                    onChange={(e) => onFieldChange(field.id, 'value', e.target.value)}
-                    placeholder="명령어 코드와 동일"
+                    value={field.description || ''}
+                    onChange={(e) => onFieldChange(field.id, 'description', e.target.value)}
+                    placeholder="설명"
                   />
-                ) : (
-                  <span className="text-gray-500">{field.value}</span>
-                )}
-              </td>
-              <td className="px-3 py-2">
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
-                  value={field.description || ''}
-                  onChange={(e) => onFieldChange(field.id, 'description', e.target.value)}
-                  placeholder="설명"
-                />
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap text-center">
-                {/* 고정 필드는 삭제 버튼 없음 */}
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap text-center">
+                  {/* 고정 필드는 삭제 버튼 없음 */}
+                </td>
+              </tr>
+            ))}
 
-          {/* 구분선 */}
-          {dataFields.length > 0 && (
-            <tr className="bg-gray-100"
-                style={{height: '2px'}}>
-              <td colSpan={5}
-                  className="p-0"></td>
-            </tr>
-          )}
+            {/* 구분선 */}
+            {dataFields.length > 0 && (
+              <tr className="bg-gray-100"
+                  style={{height: '2px'}}>
+                <td colSpan={5}
+                    className="p-0"></td>
+              </tr>
+            )}
+            </tbody>
+          </table>
+        </div>
 
-          {/* 데이터 필드 (드래그 가능) */}
-          {dataFields.length > 0 && (
-            <tr>
-              <td colSpan={5}
-                  className="p-0">
-                <div className="border-l-2 border-r-2 border-blue-200">
-                  <table className="min-w-full">
-                    <tbody>
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={dataFieldIds}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {dataFields.map((field) => (
-                          <SortableRow
-                            key={field.id}
-                            field={field}
-                            onFieldChange={onFieldChange}
-                            onRemoveField={onRemoveField}
-                            isVariable={field.isVariable}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
-          )}
+        {/* 두 번째 테이블: 데이터 필드 */}
+        {dataFields.length > 0 && (
+          <div className="border-l-2 border-r-2 border-blue-200">
+            <table className="min-w-full">
+              <tbody>
+              <SortableContext
+                items={dataFieldIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {dataFields.map((field) => (
+                  <SortableRow
+                    key={field.id}
+                    field={field}
+                    onFieldChange={onFieldChange}
+                    onRemoveField={onRemoveField}
+                    isVariable={field.isVariable}
+                  />
+                ))}
+              </SortableContext>
+              </tbody>
+            </table>
+          </div>
+        )}
 
-          {/* 구분선 */}
-          {dataFields.length > 0 && (
-            <tr className="bg-gray-100"
-                style={{height: '2px'}}>
-              <td colSpan={5}
-                  className="p-0"></td>
-            </tr>
-          )}
+        {/* 세 번째 테이블: 체크섬 필드 */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            {/* 구분선 */}
+            {dataFields.length > 0 && (
+              <thead>
+              <tr className="bg-gray-100" style={{height: '2px'}}>
+                <th colSpan={5} className="p-0"></th>
+              </tr>
+              </thead>
+            )}
 
-          {/* 체크섬 필드 (마지막 바이트) */}
-          {checksumField && (
-            <tr key={checksumField.id}
-                className="hover:bg-gray-50">
-              <td className="px-3 py-2 whitespace-nowrap">
-                <div className="flex items-center">
-                  <span className="font-mono text-gray-800">{checksumField.byteIndex}</span>
-                  <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">고정</span>
-                </div>
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap">
-                <span className="font-medium">{checksumField.name}</span>
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap">
-                <div className="flex items-center">
-                  <span className="text-gray-500">{checksumField.value}</span>
-                  <span className="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
-                </div>
-              </td>
-              <td className="px-3 py-2">
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
-                  value={checksumField.description || ''}
-                  onChange={(e) => onFieldChange(checksumField.id, 'description', e.target.value)}
-                  placeholder="설명"
-                />
-              </td>
-              <td className="px-3 py-2 whitespace-nowrap text-center">
-                {/* 고정 필드는 삭제 버튼 없음 */}
-              </td>
-            </tr>
-          )}
-          </tbody>
-        </table>
-      </div>
+            <tbody>
+            {checksumField && (
+              <tr key={checksumField.id}
+                  className="hover:bg-gray-50">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <span className="font-mono text-gray-800">{checksumField.byteIndex}</span>
+                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">고정</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <span className="font-medium">{checksumField.name}</span>
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <span className="text-gray-500">{checksumField.value}</span>
+                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="text"
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
+                    value={checksumField.description || ''}
+                    onChange={(e) => onFieldChange(checksumField.id, 'description', e.target.value)}
+                    placeholder="설명"
+                  />
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap text-center">
+                  {/* 고정 필드는 삭제 버튼 없음 */}
+                </td>
+              </tr>
+            )}
+            </tbody>
+          </table>
+        </div>
+      </DndContext>
 
       {/* 변수 정의 테이블 */}
       {variables.length > 0 && (
