@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useEffect} from 'react';
+import React from 'react';
 import {Command} from '@/lib/types';
 import {useCommandForm} from "@/components/PacketDesigner/CommandEditor/hooks/useCommandForm";
 import BasicInfoSection from "@/components/PacketDesigner/CommandEditor/BasicInfoSection";
@@ -8,12 +8,11 @@ import RequestPacketSection from "@/components/PacketDesigner/CommandEditor/Requ
 import ResponsePacketSection from "@/components/PacketDesigner/CommandEditor/ResponsePacketSection";
 import ConversionSection from "@/components/PacketDesigner/CommandEditor/ConversionSection";
 import ButtonGroup from "@/components/PacketDesigner/CommandEditor/ButtonGroup";
-import {useResponseFields} from "@/components/PacketDesigner/CommandEditor/hooks/useResponseField";
 
 interface CommandEditorProps {
   categoryId: string;
   command?: Command;
-  onSave: (categoryId: string, command: any) => void;
+  onSave: (categoryId: string, command: Command) => void;
   onCancel: () => void;
 }
 
@@ -29,55 +28,34 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
 
   const {
     commandData,
-    responseFields: commandFormResponseFields,
-    calculatedSize,
-    calculatedChecksum,
+    requestFields,
+    responseFields,
+    requestPacket,
+    requestCalculatedSize,
+    requestCalculatedChecksum,
+    responseCalculatedSize,
+    responseCalculatedChecksum,
     isPacketValid,
     packetError,
     variables,
     conversions,
-    requestPacket,
     handleCommandDataChange,
-    handlePacketChange,
     handleVariableChange,
+    handleRequestFieldChange,
     handleResponseFieldChange,
+    addRequestField,
+    removeRequestField,
     addResponseField,
     removeResponseField,
     handleConversionChange,
     addConversion,
     removeConversion,
-    saveCommand
+    saveCommand,
+    isRequestFixedField,
+    isRequestAutoCalculatedField,
+    reorderRequestFields,
+    reorderResponseFields
   } = useCommandForm(categoryId, command, onSave);
-
-  // useCommandForm에서 반환한 responseFields 로깅
-  console.log('[CommandEditor] commandFormResponseFields:', commandFormResponseFields);
-
-  // useResponseFields 훅을 직접 사용
-  const {
-    responseFields,
-    orderedResponseFields,
-    setResponseFields,
-    reorderFields,
-  } = useResponseFields(commandFormResponseFields, commandData.code);
-
-  // responseFields와 orderedResponseFields 로깅
-  console.log('[CommandEditor] responseFields:', responseFields);
-  console.log('[CommandEditor] orderedResponseFields:', orderedResponseFields);
-
-  // commandFormResponseFields가 변경될 때마다 responseFields 업데이트
-  useEffect(() => {
-    console.log('[CommandEditor] useEffect triggered, commandFormResponseFields:', commandFormResponseFields);
-    if (commandFormResponseFields && commandFormResponseFields.length > 0) {
-      console.log('[CommandEditor] Updating responseFields');
-      setResponseFields(commandFormResponseFields);
-    }
-  }, [commandFormResponseFields, setResponseFields]);
-
-  // 필드 순서 변경 핸들러
-  const handleReorderFields = (activeId: string, overId: string) => {
-    console.log('[CommandEditor] handleReorderFields called with activeId:', activeId, 'overId:', overId);
-    reorderFields(activeId, overId);
-  };
 
   const handleSave = () => {
     console.log('[CommandEditor] handleSave called, current responseFields:', responseFields);
@@ -96,23 +74,31 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
 
       {/* 요청 패킷 섹션 */}
       <RequestPacketSection
+        requestFields={requestFields}
         requestPacket={requestPacket}
-        variables={variables}
         isPacketValid={isPacketValid}
         packetError={packetError}
-        onPacketChange={handlePacketChange}
+        calculatedSize={requestCalculatedSize}
+        calculatedChecksum={requestCalculatedChecksum}
+        variables={variables}
+        onFieldChange={handleRequestFieldChange}
         onVariableChange={handleVariableChange}
+        onAddField={addRequestField}
+        onRemoveField={removeRequestField}
+        onReorderFields={reorderRequestFields}
+        isFixedField={isRequestFixedField}
+        isAutoCalculatedField={isRequestAutoCalculatedField}
       />
 
       {/* 응답 패킷 섹션 */}
       <ResponsePacketSection
-        responseFields={orderedResponseFields.length > 0 ? orderedResponseFields : commandFormResponseFields}
-        calculatedSize={calculatedSize}
-        calculatedChecksum={calculatedChecksum}
+        responseFields={responseFields}
+        calculatedSize={responseCalculatedSize}
+        calculatedChecksum={responseCalculatedChecksum}
         onFieldChange={handleResponseFieldChange}
         onAddField={addResponseField}
         onRemoveField={removeResponseField}
-        onReorderFields={handleReorderFields}
+        onReorderFields={reorderResponseFields}
       />
 
       {/* 변환 로직 섹션 */}

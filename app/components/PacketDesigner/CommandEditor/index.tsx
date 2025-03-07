@@ -25,24 +25,32 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
                                                      }) => {
   const {
     commandData,
+    requestFields,
     responseFields: commandFormResponseFields,
+    requestPacket,
+    requestCalculatedSize,
+    requestCalculatedChecksum,
     calculatedSize,
     calculatedChecksum,
     isPacketValid,
     packetError,
     variables,
     conversions,
-    requestPacket,
     handleCommandDataChange,
-    handlePacketChange,
     handleVariableChange,
+    handleRequestFieldChange,
     handleResponseFieldChange,
+    addRequestField,
+    removeRequestField,
     addResponseField,
     removeResponseField,
     handleConversionChange,
     addConversion,
     removeConversion,
-    saveCommand
+    saveCommand,
+    isRequestFixedField,
+    isRequestAutoCalculatedField,
+    reorderRequestFields
   } = useCommandForm(categoryId, command, onSave);
 
   // useResponseFields 훅을 직접 사용
@@ -59,13 +67,9 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
     }
   }, [commandFormResponseFields, setResponseFields]);
 
-  // 필드 순서 변경 핸들러
-  const handleReorderFields = (activeId: string, overId: string) => {
+  // 응답 필드 순서 변경 핸들러
+  const handleReorderResponseFields = (activeId: string, overId: string) => {
     reorderFields(activeId, overId);
-
-    // 필요하다면 여기에 추가 동기화 로직을 구현할 수 있습니다.
-    // 현재는 useResponseFields 내의 reorderFields가 내부적으로
-    // byteIndex를 올바르게 업데이트하므로 추가 조치 필요 없음
   };
 
   const handleSave = () => {
@@ -82,14 +86,22 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
         onChange={handleCommandDataChange}
       />
 
-      {/* 요청 패킷 섹션 */}
+      {/* 요청 패킷 섹션 - 새로운 테이블 기반 인터페이스 */}
       <RequestPacketSection
+        requestFields={requestFields}
         requestPacket={requestPacket}
-        variables={variables}
         isPacketValid={isPacketValid}
         packetError={packetError}
-        onPacketChange={handlePacketChange}
+        calculatedSize={requestCalculatedSize}
+        calculatedChecksum={requestCalculatedChecksum}
+        variables={variables}
+        onFieldChange={handleRequestFieldChange}
         onVariableChange={handleVariableChange}
+        onAddField={addRequestField}
+        onRemoveField={removeRequestField}
+        onReorderFields={reorderRequestFields}
+        isFixedField={isRequestFixedField}
+        isAutoCalculatedField={isRequestAutoCalculatedField}
       />
 
       {/* 응답 패킷 섹션 */}
@@ -100,7 +112,7 @@ const CommandEditor: React.FC<CommandEditorProps> = ({
         onFieldChange={handleResponseFieldChange}
         onAddField={addResponseField}
         onRemoveField={removeResponseField}
-        onReorderFields={handleReorderFields}
+        onReorderFields={handleReorderResponseFields}
       />
 
       {/* 변환 로직 섹션 */}

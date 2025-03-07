@@ -8,6 +8,7 @@
 │   │   │   │   ├── hooks
 │   │   │   │   │   ├── useCommandForm.ts
 │   │   │   │   │   ├── useConversions.ts
+│   │   │   │   │   ├── useRequestFields.ts
 │   │   │   │   │   ├── useRequestPacket.ts
 │   │   │   │   │   └── useResponseField.ts
 │   │   │   │   ├── BasicInfoSection.tsx
@@ -56,4 +57,4 @@
 ├── tailwind.config.js
 └── tsconfig.json
 
-15 directories, 40 files
+15 directories, 41 files

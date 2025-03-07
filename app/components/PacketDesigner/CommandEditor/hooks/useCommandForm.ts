@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react';
 import {Command, PacketField} from '@/lib/types';
 import {generateId} from '@/lib/initialState';
-import {useRequestPacket} from './useRequestPacket';
+import {useRequestFields} from './useRequestFields';
 import {useConversions} from './useConversions';
 import {useResponseFields} from "@/components/PacketDesigner/CommandEditor/hooks/useResponseField";
 
@@ -18,6 +18,8 @@ export const useCommandForm = (
   initialCommand?: Command,
   onSaveCallback?: (categoryId: string, command: Command) => void
 ) => {
+  // 초기 명령어 로깅
+  console.log('useCommandForm initialCommand:', initialCommand);
   // 초기 고정 필드 생성
   const createInitialFields = (): PacketField[] => {
     return [
@@ -59,28 +61,38 @@ export const useCommandForm = (
 
   const [commandData, setCommandData] = useState(initialCommandState);
 
-  // 요청 패킷 커스텀 훅 사용
+  // 요청 필드 커스텀 훅 사용
   const {
+    requestFields,
     requestPacket,
     isPacketValid,
     packetError,
     variables,
+    calculatedSize: requestCalculatedSize,
+    calculatedChecksum: requestCalculatedChecksum,
+    setRequestFields,
     setRequestPacket,
     setVariables,
-    // validateRequestPacket은 사용하지 않으므로 구조 분해 할당에서 제거
-  } = useRequestPacket(initialCommandState.request.packet, initialCommandState.request.variables as CommandVariable[]);
+    handleFieldChange: handleRequestFieldChange,
+    addField: addRequestField,
+    removeField: removeRequestField,
+    reorderFields: reorderRequestFields,
+    isFixedField: isRequestFixedField,
+    isAutoCalculatedField: isRequestAutoCalculatedField
+  } = useRequestFields(initialCommandState.request.packet, initialCommandState.request.variables as CommandVariable[]);
 
   // 응답 필드 커스텀 훅 사용
   const {
     responseFields,
-    calculatedSize,
-    calculatedChecksum,
+    calculatedSize: responseCalculatedSize,
+    calculatedChecksum: responseCalculatedChecksum,
     fixedFieldIds,
     setResponseFields,
     addResponseField,
     removeResponseField,
-    isFixedField,
-    isAutoCalculatedField
+    isFixedField: isResponseFixedField,
+    isAutoCalculatedField: isResponseAutoCalculatedField,
+    reorderFields: reorderResponseFields
   } = useResponseFields(initialFields, commandData.code);
 
   // 변환 로직 커스텀 훅 사용
@@ -112,7 +124,7 @@ export const useCommandForm = (
     }));
   };
 
-  // 요청 패킷 변경 처리
+  // 요청 패킷 변경 처리 (더 이상 직접 편집하지 않고 필드 기반으로만 수정)
   const handlePacketChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     setRequestPacket(newValue);
@@ -206,11 +218,21 @@ export const useCommandForm = (
       return field;
     });
 
+    // 요청 필드 정보를 필드 기반으로 업데이트
+    const requestFieldsInfo = requestFields.map(field => ({
+      name: field.name,
+      value: field.value || '',
+      description: field.description || ''
+    }));
+
     const updatedCommand = {
+      // 기존 명령어 ID 유지 또는 새 ID 생성
+      id: initialCommand?.id || generateId(),
       ...commandData,
       request: {
         ...commandData.request,
         packet: requestPacket,
+        fields: requestFieldsInfo,
         variables: variables
       },
       response: {
@@ -220,15 +242,20 @@ export const useCommandForm = (
     };
 
     if (onSaveCallback) {
-      onSaveCallback(categoryId, updatedCommand as Command);
+      onSaveCallback(categoryId, updatedCommand);
     }
   };
 
   return {
     commandData,
+    requestFields,
     responseFields,
-    calculatedSize,
-    calculatedChecksum,
+    requestCalculatedSize,
+    requestCalculatedChecksum,
+    responseCalculatedSize: responseCalculatedSize,
+    calculatedSize: responseCalculatedSize, // 호환성 유지
+    responseCalculatedChecksum: responseCalculatedChecksum,
+    calculatedChecksum: responseCalculatedChecksum, // 호환성 유지
     fixedFieldIds,
     isPacketValid,
     packetError,
@@ -238,14 +265,23 @@ export const useCommandForm = (
     handleCommandDataChange,
     handlePacketChange,
     handleVariableChange,
+    handleRequestFieldChange,
     handleResponseFieldChange,
+    addRequestField,
+    removeRequestField,
     addResponseField,
     removeResponseField,
     handleConversionChange,
     addConversion,
     removeConversion,
     saveCommand,
-    isFixedField,
-    isAutoCalculatedField
+    isRequestFixedField,
+    isResponseFixedField,
+    isFixedField: isResponseFixedField, // 호환성 유지
+    isRequestAutoCalculatedField,
+    isResponseAutoCalculatedField,
+    isAutoCalculatedField: isResponseAutoCalculatedField, // 호환성 유지
+    reorderRequestFields,
+    reorderResponseFields
   };
 };
