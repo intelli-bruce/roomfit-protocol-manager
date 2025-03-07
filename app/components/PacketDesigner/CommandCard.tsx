@@ -1,8 +1,7 @@
 'use client';
 
-import React, {useState} from 'react';
-import {Command} from '@/lib/types';
-import PacketVisualizer from "@/components/PacketDesigner/PacketDesginer";
+import React, { useState, useMemo } from 'react';
+import { Command } from '@/lib/types';
 
 interface CommandCardProps {
   command: Command & { categoryName: string; categoryId: string };
@@ -10,7 +9,7 @@ interface CommandCardProps {
   onDelete: (command: Command & { categoryName: string; categoryId: string }) => void;
 }
 
-const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) => {
+const CommandCard: React.FC<CommandCardProps> = ({ command, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
 
   // 명령어 코드 16진수 표시 처리
@@ -18,6 +17,143 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
     if (!code) return '';
     return code.startsWith('0x') ? code : `0x${code}`;
   };
+
+  // 요청 패킷 문자열을 파싱하여 각 바이트의 의미를 정리
+  const parsedRequestPacket = useMemo(() => {
+    if (!command.request.packet) return [];
+
+    // 패킷 문자열에서 바이트 배열 추출
+    const bytesMatch = command.request.packet.match(/\[(.*)\]/);
+    if (!bytesMatch) return [];
+
+    const bytesStr = bytesMatch[1];
+    const bytes = bytesStr.split(',').map(b => b.trim());
+
+    // 각 바이트의 의미 결정
+    const result = [];
+
+    // Header (0xFF, 0xFF)
+    if (bytes.length > 0) {
+      result.push({
+        byteIndex: '0',
+        name: 'Header',
+        value: bytes[0],
+        description: '고정 헤더 (첫번째 바이트)'
+      });
+    }
+
+    if (bytes.length > 1) {
+      result.push({
+        byteIndex: '1',
+        name: 'Header',
+        value: bytes[1],
+        description: '고정 헤더 (두번째 바이트)'
+      });
+    }
+
+    // Size
+    if (bytes.length > 2) {
+      result.push({
+        byteIndex: '2',
+        name: 'Size',
+        value: bytes[2],
+        description: '이후 바이트 수'
+      });
+    }
+
+    // Command
+    if (bytes.length > 3) {
+      result.push({
+        byteIndex: '3',
+        name: 'Command',
+        value: bytes[3],
+        description: '명령어 코드'
+      });
+    }
+
+    // Data bytes
+    for (let i = 4; i < bytes.length - 1; i++) {
+      const byteValue = bytes[i];
+      let name = `Data ${i-3}`;
+      let description = '';
+
+      // 변수 확인
+      if (byteValue.includes('${')) {
+        const varMatch = byteValue.match(/\${(.*?)}/);
+        if (varMatch && varMatch[1]) {
+          const varName = varMatch[1];
+          const variable = command.request.variables?.find(v => v.name === varName);
+
+          if (variable) {
+            name = variable.name;
+            description = variable.description || '';
+          }
+        }
+      }
+
+      result.push({
+        byteIndex: i.toString(),
+        name,
+        value: byteValue,
+        description
+      });
+    }
+
+    // Checksum (마지막 바이트) - 간소화된 표시
+    if (bytes.length > 4) {
+      const lastByteValue = bytes[bytes.length - 1];
+      let checksumValue = lastByteValue;
+      let checksumDescription = '자동 계산됨';
+
+      // ${checksum} 또는 auto 같은 placeholder인 경우 값 숨기기
+      if (lastByteValue.includes('${checksum}') || lastByteValue.toLowerCase() === 'auto') {
+        checksumValue = '';
+        checksumDescription = '패킷 유효성 검증용 체크섬 (자동 계산됨)';
+      }
+
+      result.push({
+        byteIndex: (bytes.length - 1).toString(),
+        name: 'Checksum',
+        value: checksumValue,
+        description: checksumDescription
+      });
+    }
+
+    return result;
+  }, [command.request.packet, command.request.variables]);
+
+  // 변수가 어떤 바이트에 매핑되는지 확인
+  const variableMappings = useMemo(() => {
+    if (!command.request.variables || !command.request.packet) return [];
+
+    const result = [];
+    const packetStr = command.request.packet;
+
+    for (const variable of command.request.variables) {
+      // checksum 변수는 표시하지 않기
+      if (variable.name === 'checksum') continue;
+
+      // 변수 위치 찾기
+      const varPattern = new RegExp(`\\$\\{${variable.name}\\}`);
+      const match = packetStr.match(varPattern);
+
+      if (match) {
+        // 이 변수가 있는 위치(바이트 인덱스) 대략적으로 추정
+        const parts = packetStr.substring(0, match.index).split(',');
+        const byteIndex = parts.length - 1; // 0-based index
+
+        // 기존 속성인 position을 그대로 사용하면서 추가 정보 저장
+        result.push({
+          ...variable,
+          position: variable.position || byteIndex // 기존 position 값 유지하되 없으면 계산된 값 사용
+        });
+      } else {
+        result.push(variable);
+      }
+    }
+
+    return result;
+  }, [command.request.variables, command.request.packet]);
 
   return (
     <div className="hover:bg-gray-50 transition-colors duration-100">
@@ -93,18 +229,65 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* 요청 패킷 섹션 */}
               <div>
-                <div className="text-sm font-medium text-gray-700 mb-2">요청 패킷:</div>
-                <PacketVisualizer packetString={command.request.packet} />
+                <div className="text-sm font-medium text-gray-700 mb-1">요청 패킷:</div>
+                <div className="text-xs text-gray-500 mb-2 font-mono">{command.request.packet}</div>
 
-                {command.request.variables && command.request.variables.length > 0 && (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {command.request.variables.map((variable, idx) => (
-                      <div key={idx}
-                           className="text-xs bg-gray-100 p-1 rounded flex justify-between">
-                        <span className="font-medium">${'{' + variable.name + '}'}</span>
-                        <span className="text-gray-600">{variable.defaultValue}</span>
-                      </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-1 text-left font-medium text-gray-500 w-16">바이트</th>
+                      <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">필드</th>
+                      <th className="px-2 py-1 text-left font-medium text-gray-500">값</th>
+                      <th className="px-2 py-1 text-left font-medium text-gray-500">설명</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                    {parsedRequestPacket.map((field, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-2 py-1 whitespace-nowrap">{field.byteIndex}</td>
+                        <td className="px-2 py-1 whitespace-nowrap font-medium">{field.name}</td>
+                        <td className="px-2 py-1 whitespace-nowrap">
+                          {field.value}
+                          {field.value && field.value.includes('${') && field.name !== 'Checksum' && (
+                            <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">변수</span>
+                          )}
+                          {field.name === 'Checksum' && !field.value && (
+                            <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1">{field.description || ''}</td>
+                      </tr>
                     ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {variableMappings.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-sm font-medium text-gray-700 mb-1">변수:</div>
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">변수명</th>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500 w-16">위치</th>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">기본값</th>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500">설명</th>
+                      </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                      {variableMappings.map((variable, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-2 py-1 whitespace-nowrap font-medium">${variable.name}</td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {variable.position !== undefined ? `바이트 ${variable.position}` : '-'}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">{variable.defaultValue}</td>
+                          <td className="px-2 py-1">{variable.description || ''}</td>
+                        </tr>
+                      ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -118,6 +301,7 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
                     <tr>
                       <th className="px-2 py-1 text-left font-medium text-gray-500 w-16">바이트</th>
                       <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">필드</th>
+                      <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">값</th>
                       <th className="px-2 py-1 text-left font-medium text-gray-500">설명</th>
                     </tr>
                     </thead>
@@ -127,9 +311,13 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
                           className="hover:bg-gray-50">
                         <td className="px-2 py-1 whitespace-nowrap">{field.byteIndex}</td>
                         <td className="px-2 py-1 whitespace-nowrap font-medium">{field.name}</td>
-                        <td className="px-2 py-1">
-                          {field.description || field.value || ''}
+                        <td className="px-2 py-1 whitespace-nowrap">
+                          {field.value || ''}
+                          {field.name === 'Checksum' && (
+                            <span className="ml-1 text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">자동</span>
+                          )}
                         </td>
+                        <td className="px-2 py-1">{field.description || ''}</td>
                       </tr>
                     ))}
                     </tbody>
@@ -139,15 +327,24 @@ const CommandCard: React.FC<CommandCardProps> = ({command, onEdit, onDelete}) =>
                 {command.response?.conversion && command.response.conversion.length > 0 && (
                   <div className="mt-3">
                     <div className="text-sm font-medium text-gray-700 mb-1">변환 로직:</div>
-                    <ul className="text-xs space-y-1">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500 w-24">필드</th>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500">계산식</th>
+                        <th className="px-2 py-1 text-left font-medium text-gray-500 w-16">단위</th>
+                      </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
                       {command.response.conversion.map((conv, convIdx) => (
-                        <li key={convIdx}
-                            className="bg-gray-50 p-1 rounded">
-                          <span className="font-medium">{conv.field}:</span> {conv.formula}
-                          {conv.unit && <span className="text-gray-500"> (단위: {conv.unit})</span>}
-                        </li>
+                        <tr key={convIdx} className="hover:bg-gray-50">
+                          <td className="px-2 py-1 whitespace-nowrap font-medium">{conv.field}</td>
+                          <td className="px-2 py-1">{conv.formula}</td>
+                          <td className="px-2 py-1 text-gray-500">{conv.unit || ''}</td>
+                        </tr>
                       ))}
-                    </ul>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
